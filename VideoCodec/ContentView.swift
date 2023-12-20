@@ -74,7 +74,7 @@ struct ContentView: View {
                                 let startTime = CFAbsoluteTimeGetCurrent()
 //                                extractFramesFromVideo(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")! )
 //                                ExportVideowithMixAudio(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")! )
-                                InsertImageWithVideoTracks2(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+                                InsertImageWithVideoTracksRealTime(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
                              
                                 let elapsedTime = CFAbsoluteTimeGetCurrent() - startTime
                                 print("elapsed time: \(elapsedTime)")
@@ -104,6 +104,16 @@ struct ContentView: View {
                 }
                 
             }
+        }
+        .onAppear{
+            let export = ExportBuilder()
+                            .setResolution("4K")
+                            .setFramerate(30)
+                            .setBitrateType("Low")
+                            .build()
+            let bitrate = export.calculateBitrate()
+            print(bitrate)
+            export.DisplayConfiguration()
         }
         .onChange(of: selectedMediaURL) { _ in
             if selectedMediaURL != nil{
@@ -490,7 +500,7 @@ struct ContentView: View {
         }
     }
     
-    func InsertImageWithVideoTracks(videoUrl: URL ) {
+    func InsertImageWithVideoTrackswhileExporting(videoUrl: URL ) {
         
         let videoAsset1 = AVAsset(url: videoUrl)
 
@@ -688,7 +698,7 @@ struct ContentView: View {
         }
     }
     
-    func InsertImageWithVideoTracks2(videoUrl: URL ) {
+    func InsertImageWithVideoTracksRealTime(videoUrl: URL ) {
         
         let videoAsset1 = AVAsset(url: videoUrl)
 
@@ -748,61 +758,122 @@ struct ContentView: View {
                     filterRequest.finish(with: source, context: nil)
                 }
             }
-            compositionForPlayer.frameDuration = CMTime(value: 1, timescale: 30)
+            compositionForPlayer.frameDuration = CMTime(value: 1, timescale: 60)
             compositionForPlayer.renderSize = videoTrack.naturalSize
             
 //            // Create player item
-            let playerItem = AVPlayerItem(asset: composition )
-            playerItem.videoComposition = compositionForPlayer
-
-            self.outputVideoPlayer = AVPlayer(playerItem: playerItem)
-            isloading = false
-            return
-
-            
-//            let imageLayer = CALayer()
-//            imageLayer.contents = UIImage(named: "image2.jpg")?.cgImage
-//            imageLayer.frame = CGRect(x: 0, y: 0, width: composition.naturalSize.width, height: composition.naturalSize.height)
-//            imageLayer.contentsGravity = .resizeAspect
-            
-//            let videoLayer = CALayer()
-//            videoLayer.frame = CGRect(x: 0, y: 0, width: composition.naturalSize.width, height: composition.naturalSize.height)
-////            videoLayer.contentsGravity = .resizeAspectFill
-//            
-//            // Set the time range for the image overlay
-//            let overlayStartTime = CMTime(seconds: videoTrack.timeRange.duration.seconds, preferredTimescale: videoTrack.timeRange.duration.timescale) // Set the start time for the overlay
-//            let overlayDuration = CMTime(seconds: 10, preferredTimescale: videoTrack.timeRange.duration.timescale) // Set the duration for the overlay
-////            imageLayer.beginTime = CFTimeInterval(CMTimeGetSeconds(overlayStartTime))
-////            imageLayer.duration = CFTimeInterval(CMTimeGetSeconds(overlayDuration))
+//            let playerItem = AVPlayerItem(asset: composition )
+//            playerItem.videoComposition = compositionForPlayer
 //
-//                // Create a parent layer and add the video and image layers
-//            let parentLayer = CALayer()
-//            parentLayer.frame = CGRect(x: 0, y: 0, width: composition.naturalSize.width, height: composition.naturalSize.height)
-////            parentLayer.contentsGravity = .resizeAspectFill
-//            parentLayer.addSublayer(videoLayer)
-//            parentLayer.addSublayer(imageLayer)
-//            
-//            
-//            
-////            composition.removeTimeRange(CMTimeRange(start: asset.duration, end: composition.duration))
-//            
-//            let videoComposition = AVMutableVideoComposition()
-//            videoComposition.frameDuration = CMTime(seconds: 1, preferredTimescale: 30)
-//            videoComposition.renderSize = videoTrack.naturalSize
-//        
-
-//            
+//            self.outputVideoPlayer = AVPlayer(playerItem: playerItem)
+//            isloading = false
+//            return
             
+            let videoReaderOutputSetting: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String : NSNumber(value: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
+            ]
+            
+                //Create an AVAssetReaderTrackOutput and add it to the reader
+            let videoCompositionOutput = AVAssetReaderVideoCompositionOutput(videoTracks: composition.tracks(withMediaType: .video), videoSettings: videoReaderOutputSetting)
+
+            videoCompositionOutput.videoComposition = compositionForPlayer
+            print("total video duration: \(CMTimeGetSeconds(composition.duration))")
+            
+            let assetReader = try AVAssetReader(asset: composition)
+            assetReader.add(videoCompositionOutput)
 
             
+                // Create an AVAssetWriter instance
+            let outputURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString).appendingPathExtension("mov")
+            let assetWriter = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
+            
+            let videoWriterOutputSettings: [String: Any] = [
+                AVVideoCodecKey: AVVideoCodecType.hevc,
+                AVVideoWidthKey: composition.naturalSize.width,
+                AVVideoHeightKey: composition.naturalSize.height,
+                AVVideoCompressionPropertiesKey: [
+                    AVVideoAverageBitRateKey: NSNumber(value: 10000000) ,
+//                    AVVideoMaxKeyFrameIntervalKey : 1,
+//                    AVVideoExpectedSourceFrameRateKey: 30
+//                    AVVideoProfileLevelKey: "HEVC_Main_AutoLevel"
+                ] as [String : Any]
+            ]
 
+
+                // Create an AVAssetWriterInput and add it to the writer
+            let videoWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoWriterOutputSettings)
+//            videoWriterInput.expectsMediaDataInRealTime = false
+
+            videoWriterInput.transform = composition.preferredTransform
+            
+            assetWriter.add(videoWriterInput)
 
             
-
-
-
-
+                // Start Reading and Writing
+            assetReader.startReading()
+            assetWriter.startWriting()
+            assetWriter.startSession(atSourceTime: .zero)
             
+            
+            var sampleNo = 0
+            while let sampleBuffer = videoCompositionOutput.copyNextSampleBuffer(){
+                print("Reading sample no: \(sampleNo)")
+                while !videoWriterInput.isReadyForMoreMediaData {
+                    usleep(10) // Sleep for a very short time
+                }
+                
+                print("Writing sample no: \(sampleNo)")
+                videoWriterInput.append(sampleBuffer)
+                sampleNo += 1
+            }
+            
+                // Finish writing
+            videoWriterInput.markAsFinished()
+//            audioWriterInput.markAsFinished()
+            assetWriter.finishWriting {
+                if assetWriter.status == .completed {
+                    print("Writing completed successfully.")
+                        // Save video to photo library
+                    
+                    let photoAuthorizationStatus = PHPhotoLibrary.authorizationStatus()
+                        switch photoAuthorizationStatus {
+                        case .authorized:
+                            print("Access is granted by user")
+                        case .notDetermined:
+                            PHPhotoLibrary.requestAuthorization({
+                                (newStatus) in
+                                print("status is \(newStatus)")
+                                if newStatus == PHAuthorizationStatus.authorized {
+                                    print("success")
+                                }
+                            })
+                            print("It is not determined until now")
+                        case .restricted:
+                            print("User do not have access to photo album.")
+                        case .denied:
+                            print("User has denied the permission.")
+                        @unknown default:
+                            print("Unknown status")
+                        }
+                    
+                    PHPhotoLibrary.shared().performChanges({
+                        PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outputURL)
+                    }) { saved, error in
+                        if saved {
+                            print("Video saved successfully.")
+                            self.outputVideoPlayer = AVPlayer(url: outputURL)
+                            
+                            
+                        } else {
+                            print("An error occurred: \(error?.localizedDescription ?? "Unknown error")")
+                        }
+                    }
+                } else if assetWriter.status == .failed {
+                    print("An error occurred: \(assetWriter.error?.localizedDescription ?? "Unknown error")")
+                }
+                isloading = false
+            }
+        
         } catch {
             print("Error with \(error.localizedDescription)")
         }
@@ -810,7 +881,7 @@ struct ContentView: View {
 
     
   
-    public func mergeMovies(videoURLs: [URL], outcome: @escaping (Result<URL, Error>) -> Void) {
+    public func mergeMoviesbyNewazVai(videoURLs: [URL], outcome: @escaping (Result<URL, Error>) -> Void) {
       let acceptableVideoExtensions = ["mov", "mp4", "m4v"]
       let _videoURLs = videoURLs.filter({ !$0.absoluteString.contains(".DS_Store") && acceptableVideoExtensions.contains($0.pathExtension.lowercased()) })
       
