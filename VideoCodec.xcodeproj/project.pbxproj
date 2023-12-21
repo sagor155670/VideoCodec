@@ -19,6 +19,8 @@
 		1C221FAE2B0C918E007526DB /* Codec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C221FAD2B0C918E007526DB /* Codec.swift */; };
 		1C233C1D2B25EC2000EDEA55 /* audio2.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 1C233C1C2B25EC2000EDEA55 /* audio2.m4a */; };
 		1C346ECF2B31A14800FDFCAC /* video.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 1C346ECE2B31A14800FDFCAC /* video.mp4 */; };
+		1C46B7C72B345FF100447C56 /* test.MOV in Resources */ = {isa = PBXBuildFile; fileRef = 1C46B7C62B345FF100447C56 /* test.MOV */; };
+		1C46B7C92B3463D000447C56 /* test2.MOV in Resources */ = {isa = PBXBuildFile; fileRef = 1C46B7C82B3463D000447C56 /* test2.MOV */; };
 		1C88B6C52B26E88100EC34EC /* audio3.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 1C88B6C42B26E88100EC34EC /* audio3.m4a */; };
 		1C88B6C82B26EC3D00EC34EC /* audio4.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 1C88B6C72B26EC3D00EC34EC /* audio4.m4a */; };
 		1CB683B72B32E19000953F85 /* ExportBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB683B62B32E19000953F85 /* ExportBuilder.swift */; };
@@ -28,7 +30,6 @@
 		1CE18B142B28299E00570356 /* 8khz.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 1CE18B132B28299E00570356 /* 8khz.m4a */; };
 		1CE18B322B28838500570356 /* mono.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 1CE18B312B28838500570356 /* mono.m4a */; };
 		1CE18B342B2884C200570356 /* stereo.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 1CE18B332B2884C200570356 /* stereo.m4a */; };
-		1CE634852B2B051A00971FB7 /* transparent.mov in Resources */ = {isa = PBXBuildFile; fileRef = 1CE634842B2B051A00971FB7 /* transparent.mov */; };
 		1CE634892B2B2AC900971FB7 /* image2.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 1CE634882B2B2AC900971FB7 /* image2.jpg */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +48,8 @@
 		1C221FAD2B0C918E007526DB /* Codec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Codec.swift; sourceTree = "<group>"; };
 		1C233C1C2B25EC2000EDEA55 /* audio2.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = audio2.m4a; sourceTree = "<group>"; };
 		1C346ECE2B31A14800FDFCAC /* video.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = video.mp4; sourceTree = "<group>"; };
+		1C46B7C62B345FF100447C56 /* test.MOV */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = test.MOV; sourceTree = "<group>"; };
+		1C46B7C82B3463D000447C56 /* test2.MOV */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = test2.MOV; sourceTree = "<group>"; };
 		1C88B6C42B26E88100EC34EC /* audio3.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = audio3.m4a; sourceTree = "<group>"; };
 		1C88B6C72B26EC3D00EC34EC /* audio4.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = audio4.m4a; sourceTree = "<group>"; };
 		1CB683B62B32E19000953F85 /* ExportBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportBuilder.swift; sourceTree = "<group>"; };
@@ -56,7 +59,6 @@
 		1CE18B132B28299E00570356 /* 8khz.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = 8khz.m4a; sourceTree = "<group>"; };
 		1CE18B312B28838500570356 /* mono.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = mono.m4a; sourceTree = "<group>"; };
 		1CE18B332B2884C200570356 /* stereo.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = stereo.m4a; sourceTree = "<group>"; };
-		1CE634842B2B051A00971FB7 /* transparent.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = transparent.mov; sourceTree = "<group>"; };
 		1CE634882B2B2AC900971FB7 /* image2.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = image2.jpg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -104,6 +106,8 @@
 				1C062FC02B0F373100BBB6C3 /* Info.plist */,
 				1C221F9F2B0C9078007526DB /* VideoCodecApp.swift */,
 				1CDB9FD92B1355A80026878D /* test3.MOV */,
+				1C46B7C82B3463D000447C56 /* test2.MOV */,
+				1C46B7C62B345FF100447C56 /* test.MOV */,
 				1C346ECE2B31A14800FDFCAC /* video.mp4 */,
 				1C233C1C2B25EC2000EDEA55 /* audio2.m4a */,
 				1C0412D72B29814500FE5CED /* stereo2.m4a */,
@@ -111,7 +115,6 @@
 				1C0412DB2B29BC5F00FE5CED /* image.jpeg */,
 				1CE18B132B28299E00570356 /* 8khz.m4a */,
 				1C88B6C72B26EC3D00EC34EC /* audio4.m4a */,
-				1CE634842B2B051A00971FB7 /* transparent.mov */,
 				1CE18B312B28838500570356 /* mono.m4a */,
 				1CE18B332B2884C200570356 /* stereo.m4a */,
 				1C0412D52B29813D00FE5CED /* mono2.m4a */,
@@ -199,14 +202,15 @@
 				1C0412DC2B29BC5F00FE5CED /* image.jpeg in Resources */,
 				1C0412D82B29814500FE5CED /* stereo2.m4a in Resources */,
 				1C233C1D2B25EC2000EDEA55 /* audio2.m4a in Resources */,
+				1C46B7C92B3463D000447C56 /* test2.MOV in Resources */,
 				1CE18B342B2884C200570356 /* stereo.m4a in Resources */,
-				1CE634852B2B051A00971FB7 /* transparent.mov in Resources */,
 				1CE634892B2B2AC900971FB7 /* image2.jpg in Resources */,
 				1CDB9FDA2B1355A80026878D /* test3.MOV in Resources */,
 				1C88B6C82B26EC3D00EC34EC /* audio4.m4a in Resources */,
 				1C221FA42B0C9079007526DB /* Assets.xcassets in Resources */,
 				1CE18B142B28299E00570356 /* 8khz.m4a in Resources */,
 				1C88B6C52B26E88100EC34EC /* audio3.m4a in Resources */,
+				1C46B7C72B345FF100447C56 /* test.MOV in Resources */,
 				1C0412D62B29813D00FE5CED /* mono2.m4a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

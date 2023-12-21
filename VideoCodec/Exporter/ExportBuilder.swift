@@ -13,9 +13,9 @@ class ExportBuilder{
     private var videoTracks: [AVAssetTrack] = []
     private var audioTracks: [AVAssetTrack] = []
     private var outputUrl: URL? = nil
-    private var Resolution: String = ""
+    private var Resolution: String = "1080P"
     private var frameRate: Int = 30
-    private var BitrateType: String = ""
+    private var BitrateType: String = "Recommended"
     
     func setVideoTracks(videoTracks Tracks: [AVAssetTrack]) -> ExportBuilder{
         self.videoTracks = Tracks
@@ -46,7 +46,9 @@ class ExportBuilder{
         return self
     }
     func build() -> Export{
-        return Export(videoTracks: videoTracks, audioTracks: audioTracks, outputUrl: outputUrl! , Resolution: Resolution, frameRate: frameRate, BitrateType: BitrateType)
+        let demoOutputURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString).appendingPathExtension("mov")
+
+        return Export(videoTracks: videoTracks, audioTracks: audioTracks, outputUrl: outputUrl ?? demoOutputURL , Resolution: Resolution, frameRate: frameRate, BitrateType: BitrateType)
     }
     
     

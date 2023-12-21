@@ -74,7 +74,8 @@ struct ContentView: View {
                                 let startTime = CFAbsoluteTimeGetCurrent()
 //                                extractFramesFromVideo(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")! )
 //                                ExportVideowithMixAudio(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")! )
-                                InsertImageWithVideoTracksRealTime(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+//                                InsertImageWithVideoTracksRealTime(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+                                callExporter(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
                              
                                 let elapsedTime = CFAbsoluteTimeGetCurrent() - startTime
                                 print("elapsed time: \(elapsedTime)")
@@ -114,6 +115,7 @@ struct ContentView: View {
             let bitrate = export.calculateBitrate()
             print(bitrate)
             export.DisplayConfiguration()
+            
         }
         .onChange(of: selectedMediaURL) { _ in
             if selectedMediaURL != nil{
@@ -879,7 +881,40 @@ struct ContentView: View {
         }
     }
 
-    
+    func callExporter(videoUrl: URL){
+        let videoAsset1 = AVAsset(url: videoUrl)
+        let videoAsset2 = AVAsset(url: Bundle.main.url(forResource: "test", withExtension: "MOV")! )
+        let videoAsset3 = AVAsset(url: Bundle.main.url(forResource: "test2", withExtension: "MOV")! )
+        let vTrack1 = videoAsset1.tracks(withMediaType: .video).first
+        let vTrack2 = videoAsset2.tracks(withMediaType: .video).first
+        let vTrack3 = videoAsset3.tracks(withMediaType: .video).first
+        
+        let audioAsset1 = AVAsset(url: Bundle.main.url(forResource: "mono2", withExtension: "m4a")! )
+        let audioAsset2 = AVAsset(url: Bundle.main.url(forResource: "audio2", withExtension: "m4a")! )
+        let aTrack1 = audioAsset1.tracks(withMediaType: .audio).first
+        let atrack2 = audioAsset2.tracks(withMediaType: .audio).first
+        var videoTracks: [AVAssetTrack] = []
+        var audioTracks: [AVAssetTrack] = []
+        videoTracks.append(vTrack1!)
+        videoTracks.append(vTrack2!)
+        videoTracks.append(vTrack3!)
+        audioTracks.append(aTrack1!)
+        audioTracks.append(atrack2!)
+        
+        let export = ExportBuilder()
+                        .setVideoTracks(videoTracks: videoTracks)
+                        .setAudioTracks(audioTracks: audioTracks)
+                        .setResolution("4K")
+                        .setFramerate(30)
+                        .setBitrateType("Low")
+                        .build()
+        export.ExportAsset()
+        self.isloading = false
+        self.outputVideoPlayer = AVPlayer(url: videoUrl)
+        return
+        
+
+    }
   
     public func mergeMoviesbyNewazVai(videoURLs: [URL], outcome: @escaping (Result<URL, Error>) -> Void) {
       let acceptableVideoExtensions = ["mov", "mp4", "m4v"]
@@ -993,6 +1028,8 @@ struct ContentView: View {
     }
     
 }
+
+
 
 
 func estimatedOutputFileSize(AverageBitRateForVideo: Double, AverageBitRateForAudio: Double, VideoDuration: Double)-> Double{
