@@ -16,14 +16,17 @@ class Export {
     var Resolution: String
     var frameRate: Int
     var BitrateType: String
+    var sampleNo: Int
+    var percentage: ProgressCountProtocol?
 
-    init(videoTracks: [AVAssetTrack], audioTracks: [AVAssetTrack], outputUrl: URL, Resolution: String, frameRate: Int, BitrateType: String) {
+    init(videoTracks: [AVAssetTrack], audioTracks: [AVAssetTrack], outputUrl: URL? = nil, Resolution: String, frameRate: Int, BitrateType: String, sampleNo: Int = 0) {
         self.videoTracks = videoTracks
         self.audioTracks = audioTracks
         self.outputUrl = outputUrl
         self.Resolution = Resolution
         self.frameRate = frameRate
         self.BitrateType = BitrateType
+        self.sampleNo = sampleNo
     }
     
     func calculateBitrate() -> Int {
@@ -260,6 +263,8 @@ class Export {
             let videoFrameSize = self.frameSize()
             let bitrate = self.calculateBitrate()
             
+            let totalFrames = composition.duration.seconds * Double(self.frameRate)
+            
             let videoWriterSettings: [String: Any] = [
                 AVVideoCodecKey: AVVideoCodecType.hevc,
                 AVVideoWidthKey: videoFrameSize.width,
@@ -306,7 +311,7 @@ class Export {
             }
             
                 // Read Samples and Write them into the new video
-            var sampleNo = 0
+//            var sampleNo = 0
             while let sampleBuffer = videoCompositionOutput.copyNextSampleBuffer(){
                 print("Reading sample no: \(sampleNo)")
                 while !videoWriterInput.isReadyForMoreMediaData {
@@ -316,6 +321,8 @@ class Export {
                 print("Writing sample no: \(sampleNo)")
                 videoWriterInput.append(sampleBuffer)
                 sampleNo += 1
+                let percentage = Double(sampleNo) * 100 / totalFrames
+                self.percentage?.getWriterPercentage(percentCount: Int(percentage))
             }
             
             videoWriterInput.markAsFinished()
@@ -336,6 +343,7 @@ class Export {
         
 
     }
+    
     
     func SaveAsset(){
         //Checking and Taking permission

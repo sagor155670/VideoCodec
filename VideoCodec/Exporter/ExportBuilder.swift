@@ -17,6 +17,7 @@ class ExportBuilder{
     private var frameRate: Int = 30
     private var BitrateType: String = "Recommended"
     
+    
     func setVideoTracks(videoTracks Tracks: [AVAssetTrack]) -> ExportBuilder{
         self.videoTracks = Tracks
         return self

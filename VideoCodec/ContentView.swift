@@ -10,13 +10,28 @@ import AVFoundation
 import Photos
 import AVKit
 
-struct ContentView: View {
+class countSample{
+//    func getSampleCount(sampleNo count: Int) -> Int{
+//        return count
+//    }
+}
+struct ContentView: View, ProgressCountProtocol {
+    func getWriterPercentage(percentCount count: Int) {
+        self.percent = count
+    }
+    
+
+    
+
+    
     @State var inputVideoPlayer:AVPlayer? = nil
     @State var outputVideoPlayer:AVPlayer? = nil
     @State var isloading:Bool = false
     @State var selectedMediaURL: URL? = nil
     @State var isShowingPicker:Bool = false
+    @State var percent:Int = 0
     
+
     var body: some View {
         
         VStack {
@@ -25,6 +40,7 @@ struct ContentView: View {
                 VStack{
                     VideoPlayer(player: inputVideoPlayer)
                         .ignoresSafeArea(.all)
+                    
                     
                     VideoPlayer(player: outputVideoPlayer)
                         .ignoresSafeArea(.all)
@@ -61,8 +77,11 @@ struct ContentView: View {
                 
             }
             else if self.isloading{
-                ProgressView()
-                    .frame(width: 100,height: 100)
+                VStack{
+                    Text("sampleNo: \(self.percent)")
+                    ProgressView()
+                        .frame(width: 100,height: 100)
+                }
             }
             else{
                 HStack{
@@ -76,6 +95,7 @@ struct ContentView: View {
 //                                ExportVideowithMixAudio(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")! )
 //                                InsertImageWithVideoTracksRealTime(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
                                 callExporter(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+//                                ExportMixedVideo(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
                              
                                 let elapsedTime = CFAbsoluteTimeGetCurrent() - startTime
                                 print("elapsed time: \(elapsedTime)")
@@ -905,15 +925,256 @@ struct ContentView: View {
                         .setVideoTracks(videoTracks: videoTracks)
                         .setAudioTracks(audioTracks: audioTracks)
                         .setResolution("4K")
-                        .setFramerate(30)
+                        .setFramerate(25)
                         .setBitrateType("Low")
                         .build()
+        
+//        self.sampleNo = export.sampleNo
+        export.percentage = self
         export.ExportAsset()
+        
         self.isloading = false
         self.outputVideoPlayer = AVPlayer(url: videoUrl)
         return
         
 
+    }
+    
+    func ExportMixedVideo(videoUrl: URL ) {
+        
+        let asset = AVAsset(url: videoUrl)
+        let videoAsset1 = AVAsset(url: videoUrl)
+        let videoAsset2 = AVAsset(url:  Bundle.main.url(forResource: "test2", withExtension: "MOV")!)
+        let frameRate:Float = getFrameRate(asset: asset) ?? 30
+        print("Framerate: \(frameRate)")
+//        let duration = CMTimeGetSeconds(asset.duration)
+//        print("Video duration: \(duration)")
+//        print("audio duration: \(audioAsset.duration)")
+        
+        let composition = AVMutableComposition()
+        
+        guard let track1 = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+              let track2 = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
+//            ,let track3 = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+        else {
+            return
+        }
+
+            
+        
+        do{
+                // Create an AVAssetReader instance
+            let assetReader = try AVAssetReader(asset: asset)
+            
+                // Get video track
+            let videoTrack = asset.tracks(withMediaType: .video).first!
+            
+                // Get audio track
+//            guard let audioTrack = asset.tracks(withMediaType: .audio).first else{
+//                self.isloading = false
+//                return
+//            }
+    
+            guard let vTrack1 = videoAsset1.tracks(withMediaType: .video).first else{
+                self.isloading = false
+                return
+            }
+            guard let vTrack2 = videoAsset2.tracks(withMediaType: .video).first else{
+                self.isloading = false
+                return
+            }
+        
+
+            try track1.insertTimeRange(CMTimeRange(start: .zero, duration: vTrack1.timeRange.duration) , of: vTrack1, at: .zero)
+            try track2.insertTimeRange(CMTimeRange(start: .zero , duration: vTrack2.timeRange.duration), of: vTrack2, at: .zero )
+//            try track3.insertTimeRange(CMTimeRange(start: CMTime(seconds: 130, preferredTimescale: audioTrack3.timeRange.duration.timescale), duration: audioTrack3.timeRange.duration), of: audioTrack3, at: CMTime(seconds: track1.timeRange.duration.seconds, preferredTimescale: audioTrack.timeRange.duration.timescale))
+
+            
+            composition.removeTimeRange(CMTimeRange(start: asset.duration, end: composition.duration))
+            
+            let mainInstruction = AVMutableVideoCompositionInstruction()
+            mainInstruction.timeRange = CMTimeRangeMake(start: .zero, duration: composition.duration)
+
+            let layerInstruction1 = AVMutableVideoCompositionLayerInstruction(assetTrack: track1)
+            let layerInstruction2 = AVMutableVideoCompositionLayerInstruction(assetTrack: track2)
+            
+            // Here we can set the transform to display videos side by side
+            let videoSize = track1.naturalSize
+
+            let screenWidth = UIScreen.main.bounds.width
+            let screenHeight = UIScreen.main.bounds.height
+            let screenAspectRatio = screenWidth / screenHeight
+
+            // Calculate the aspect ratio of a single video track
+            let videoAspectRatio = videoSize.width / videoSize.height
+
+            // Calculate the scaling factor to fit both videos side by side
+            let scale: CGFloat
+            if screenAspectRatio > 2 * videoAspectRatio {
+                // If the screen is wider than twice the video, fit the videos horizontally
+                scale = screenWidth / (2 * videoSize.width)
+            } else {
+                // If the screen is taller or not wide enough, fit the videos vertically
+                scale = screenHeight / videoSize.height
+            }
+
+            // Apply the scaling to both video tracks to fit them on the screen
+            let scaledTransform = CGAffineTransform(scaleX: 0.5, y: 0.5)
+            let moveLeft = CGAffineTransform(translationX: 0, y: 0)
+            let moveRight = CGAffineTransform(translationX: videoSize.width * scale, y: 0)
+
+            layerInstruction1.setTransform(scaledTransform.concatenating(moveLeft), at: .zero)
+            layerInstruction2.setTransform(scaledTransform.concatenating(moveRight), at: .zero)
+
+            // Update the mainComposition's render size to fit both videos side by side
+//            let scaledVideoWidth = videoSize.width * scale * 2
+//            let scaledVideoHeight = videoSize.height * scale
+                       
+            mainInstruction.layerInstructions = [layerInstruction1, layerInstruction2]
+
+            
+            let mainComposition = AVMutableVideoComposition()
+            mainComposition.instructions = [mainInstruction]
+            mainComposition.frameDuration = CMTimeMake(value: 1, timescale: 30)
+//            mainComposition.renderSize = CGSize(width: scaledVideoWidth, height: scaledVideoHeight) 
+            mainComposition.renderSize = videoSize
+            
+            let playerItem = AVPlayerItem(asset: composition)
+            playerItem.videoComposition = mainComposition
+            self.isloading = false
+            self.outputVideoPlayer = AVPlayer(playerItem: playerItem)
+            return
+                //making outputsettings
+            let videoReaderOutputSetting: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String : NSNumber(value: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
+            ]
+//            let audioReaderSettings: [String: Any] = [AVFormatIDKey: kAudioFormatLinearPCM]
+            
+                //Create an AVAssetReaderTrackOutput and add it to the reader
+            let videoTrackOutput = AVAssetReaderVideoCompositionOutput(videoTracks: composition.tracks(withMediaType: .video), videoSettings: videoReaderOutputSetting)
+//            let audioTrackOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: audioReaderSettings)
+
+            
+            assetReader.add(videoTrackOutput)
+            print("total audio duration: \(CMTimeGetSeconds(composition.duration))")
+            
+//            let audioAssetReader = try AVAssetReader(asset: composition)
+//            audioAssetReader.add(audioMixOutput)
+
+            
+                // Create an AVAssetWriter instance
+            let outputURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString).appendingPathExtension("mov")
+            let assetWriter = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
+            
+            let videoWriterOutputSettings: [String: Any] = [
+                AVVideoCodecKey: AVVideoCodecType.hevc,
+                AVVideoWidthKey: videoTrack.naturalSize.width,
+                AVVideoHeightKey: videoTrack.naturalSize.height,
+                AVVideoCompressionPropertiesKey: [
+                    AVVideoAverageBitRateKey: NSNumber(value: 10000000) ,
+//                    AVVideoMaxKeyFrameIntervalKey : 1,
+//                    AVVideoExpectedSourceFrameRateKey: 30
+//                    AVVideoProfileLevelKey: "HEVC_Main_AutoLevel"
+                ] as [String : Any]
+            ]
+            let audioWriterOutputSettings: [String: Any] = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 2,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+                AVEncoderBitRateKey: 256000
+            ]
+
+                // Create an AVAssetWriterInput and add it to the writer
+            let videoWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoWriterOutputSettings)
+            let audioWriterInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioWriterOutputSettings)
+
+            videoWriterInput.transform = videoTrack.preferredTransform
+            
+            assetWriter.add(videoWriterInput)
+            assetWriter.add(audioWriterInput)
+
+            
+                // Start Reading and Writing
+            assetReader.startReading()
+//            audioAssetReader.startReading()
+            assetWriter.startWriting()
+            assetWriter.startSession(atSourceTime: .zero)
+            
+//            let processingQueue = DispatchQueue(label: "processingQueue")
+//
+//            audioWriterInput.requestMediaDataWhenReady(on: processingQueue) {
+//                while audioWriterInput.isReadyForMoreMediaData {
+//                    if let sampleBuffer = audioMixOutput.copyNextSampleBuffer() {
+//                        audioWriterInput.append(sampleBuffer)
+//                    } else {
+//                        audioWriterInput.markAsFinished()
+//                    }
+//                }
+//            }
+                // Read Samples and Write them into the new video
+            var sampleNo = 0
+            while let sampleBuffer = videoTrackOutput.copyNextSampleBuffer(){
+                print("Reading sample no: \(sampleNo)")
+                while !videoWriterInput.isReadyForMoreMediaData {
+                    usleep(10) // Sleep for a very short time
+                }
+                
+                print("Writing sample no: \(sampleNo)")
+                videoWriterInput.append(sampleBuffer)
+                sampleNo += 1
+            }
+            
+                // Finish writing
+            videoWriterInput.markAsFinished()
+//            audioWriterInput.markAsFinished()
+            assetWriter.finishWriting {
+                if assetWriter.status == .completed {
+                    print("Writing completed successfully.")
+                        // Save video to photo library
+                    
+                    let photoAuthorizationStatus = PHPhotoLibrary.authorizationStatus()
+                        switch photoAuthorizationStatus {
+                        case .authorized:
+                            print("Access is granted by user")
+                        case .notDetermined:
+                            PHPhotoLibrary.requestAuthorization({
+                                (newStatus) in
+                                print("status is \(newStatus)")
+                                if newStatus == PHAuthorizationStatus.authorized {
+                                    print("success")
+                                }
+                            })
+                            print("It is not determined until now")
+                        case .restricted:
+                            print("User do not have access to photo album.")
+                        case .denied:
+                            print("User has denied the permission.")
+                        @unknown default:
+                            print("Unknown status")
+                        }
+                    
+                    PHPhotoLibrary.shared().performChanges({
+                        PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outputURL)
+                    }) { saved, error in
+                        if saved {
+                            print("Video saved successfully.")
+                            self.outputVideoPlayer = AVPlayer(url: outputURL)
+                            
+                            
+                        } else {
+                            print("An error occurred: \(error?.localizedDescription ?? "Unknown error")")
+                        }
+                    }
+                } else if assetWriter.status == .failed {
+                    print("An error occurred: \(assetWriter.error?.localizedDescription ?? "Unknown error")")
+                }
+                isloading = false
+            }
+            
+        } catch {
+            print("Error with \(error.localizedDescription)")
+        }
     }
   
     public func mergeMoviesbyNewazVai(videoURLs: [URL], outcome: @escaping (Result<URL, Error>) -> Void) {
