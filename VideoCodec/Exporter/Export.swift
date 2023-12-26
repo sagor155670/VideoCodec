@@ -1,9 +1,9 @@
-//
-//  Exporter.swift
-//  VideoCodec
-//
-//  Created by Saiful Islam Sagor on 18/12/23.
-//
+    //
+    //  Exporter.swift
+    //  VideoCodec
+    //
+    //  Created by Saiful Islam Sagor on 18/12/23.
+    //
 
 import Foundation
 import AVFoundation
@@ -18,7 +18,8 @@ class Export {
     var BitrateType: String
     var sampleNo: Int
     var percentage: ProgressCountProtocol?
-
+    var workItem: DispatchWorkItem?
+    
     init(videoTracks: [AVAssetTrack], audioTracks: [AVAssetTrack], outputUrl: URL? = nil, Resolution: String, frameRate: Int, BitrateType: String, sampleNo: Int = 0) {
         self.videoTracks = videoTracks
         self.audioTracks = audioTracks
@@ -69,7 +70,7 @@ class Export {
         }
         let config = "_\(outputConfiguration)"
         print(config)
-        // bitrates in kbps
+            // bitrates in kbps
         switch Configuration(rawValue: config) {
         case ._480PlessLow:
             let bitrate = 2000
@@ -161,12 +162,12 @@ class Export {
         case ._4KgraterHigh:
             let bitrate = 46500
             return bitrate
-        
+            
         case .none:
             print("Not a Valid Case")
             return 1000
         }
-     
+        
     }
     func ExportAsset(){
         guard let outputUrl = self.outputUrl else {
@@ -187,7 +188,7 @@ class Export {
             }catch{
                 
             }
-           currentTime = CMTimeAdd(currentTime, trackDuration)
+            currentTime = CMTimeAdd(currentTime, trackDuration)
         }
         
         var currenTimeAudio = CMTime.zero
@@ -202,7 +203,7 @@ class Export {
             }catch{
                 print("timerange could not be inserted!")
             }
-           currenTimeAudio = CMTimeAdd(currenTimeAudio , trackDuration)
+            currenTimeAudio = CMTimeAdd(currenTimeAudio , trackDuration)
         }
         
         composition.removeTimeRange(CMTimeRange(start: currentTime , duration: composition.duration))
@@ -212,11 +213,11 @@ class Export {
         ]
         let audioReaderSettings: [String: Any] = [AVFormatIDKey: kAudioFormatLinearPCM]
         
-//        let videoComposition = AVMutableVideoComposition(asset: composition) { filterRequest in
-//            let source = filterRequest.sourceImage
-//            let outputImage = source.transformed(by: CGAffineTransform(scaleX: composition.naturalSize.width / source.extent.width, y: composition.naturalSize.height / source.extent.height) )
-//            filterRequest.finish(with: outputImage, context: nil)
-//        }
+            //        let videoComposition = AVMutableVideoComposition(asset: composition) { filterRequest in
+            //            let source = filterRequest.sourceImage
+            //            let outputImage = source.transformed(by: CGAffineTransform(scaleX: composition.naturalSize.width / source.extent.width, y: composition.naturalSize.height / source.extent.height) )
+            //            filterRequest.finish(with: outputImage, context: nil)
+            //        }
         let videoComposition = AVMutableVideoComposition()
         var layerInstructions: [AVMutableVideoCompositionLayerInstruction] = []
         for track in composition.tracks(withMediaType: .video){
@@ -249,6 +250,7 @@ class Export {
         let audioMixOutput = AVAssetReaderAudioMixOutput(audioTracks: composition.tracks(withMediaType: .audio), audioSettings: nil)
         audioMixOutput.audioMix = audioMixer
         
+        
         do{
             let VideoAssetReader = try AVAssetReader(asset: composition)
             let audioAssetReader = try AVAssetReader(asset: composition)
@@ -271,9 +273,9 @@ class Export {
                 AVVideoHeightKey: videoFrameSize.height,
                 AVVideoCompressionPropertiesKey: [
                     AVVideoAverageBitRateKey: NSNumber(value: bitrate * 1000) ,
-    //                    AVVideoMaxKeyFrameIntervalKey : 1,
-    //                    AVVideoExpectedSourceFrameRateKey: 30
-    //                    AVVideoProfileLevelKey: "HEVC_Main_AutoLevel"
+                    //                    AVVideoMaxKeyFrameIntervalKey : 1,
+                    //                    AVVideoExpectedSourceFrameRateKey: 30
+                    //                    AVVideoProfileLevelKey: "HEVC_Main_AutoLevel"
                 ] as [String : Any]
             ]
             
@@ -293,61 +295,84 @@ class Export {
             assetWriter.add(videoWriterInput)
             assetWriter.add(audioWriterInput)
             
-            VideoAssetReader.startReading()
-            audioAssetReader.startReading()
-            assetWriter.startWriting()
-            assetWriter.startSession(atSourceTime: .zero)
-            
-            let processingQueue = DispatchQueue(label: "processingQueue")
-
-            audioWriterInput.requestMediaDataWhenReady(on: processingQueue) {
-                while audioWriterInput.isReadyForMoreMediaData {
-                    if let sampleBuffer = audioMixOutput.copyNextSampleBuffer() {
-                        audioWriterInput.append(sampleBuffer)
-                    } else {
-                        audioWriterInput.markAsFinished()
+            workItem = DispatchWorkItem {
+                    //            DispatchQueue.global().async {
+                VideoAssetReader.startReading()
+                audioAssetReader.startReading()
+                assetWriter.startWriting()
+                assetWriter.startSession(atSourceTime: .zero)
+                
+                let processingQueue = DispatchQueue(label: "processingQueue")
+                
+                audioWriterInput.requestMediaDataWhenReady(on: processingQueue) {
+                    while audioWriterInput.isReadyForMoreMediaData {
+                        if let sampleBuffer = audioMixOutput.copyNextSampleBuffer() {
+                            if self.workItem?.isCancelled == true {
+                                assetWriter.cancelWriting()
+                                print("export cancelled!")
+                                return
+                            }
+                            audioWriterInput.append(sampleBuffer)
+                        } else {
+                            audioWriterInput.markAsFinished()
+                        }
+                    }
+                }
+                
+                    // Read Samples and Write them into the new video
+                    //            var sampleNo = 0
+                while let sampleBuffer = videoCompositionOutput.copyNextSampleBuffer(){
+                    if self.workItem?.isCancelled == true {
+                        assetWriter.cancelWriting()
+                        print("export cancelled!")
+                        return
+                    }
+                    print("Reading sample no: \(self.sampleNo)")
+                    while !videoWriterInput.isReadyForMoreMediaData {
+                        usleep(10) // Sleep for a very short time
+                    }
+                    
+                    print("Writing sample no: \(self.sampleNo)")
+                    videoWriterInput.append(sampleBuffer)
+                    self.sampleNo += 1
+                    let percentage = Double(self.sampleNo) * 100 / totalFrames
+                    self.percentage?.getWriterPercentage(percentCount: Int(percentage))
+                }
+                
+                videoWriterInput.markAsFinished()
+                
+                    //            }
+                
+                
+                
+                assetWriter.finishWriting {
+                    if assetWriter.status == .completed{
+                        self.SaveAsset()
+                    }else if assetWriter.status == .failed {
+                        print("An error occurred: \(assetWriter.error?.localizedDescription ?? "Unknown error")")
                     }
                 }
             }
             
-                // Read Samples and Write them into the new video
-//            var sampleNo = 0
-            while let sampleBuffer = videoCompositionOutput.copyNextSampleBuffer(){
-                print("Reading sample no: \(sampleNo)")
-                while !videoWriterInput.isReadyForMoreMediaData {
-                    usleep(10) // Sleep for a very short time
-                }
-                
-                print("Writing sample no: \(sampleNo)")
-                videoWriterInput.append(sampleBuffer)
-                sampleNo += 1
-                let percentage = Double(sampleNo) * 100 / totalFrames
-                self.percentage?.getWriterPercentage(percentCount: Int(percentage))
-            }
+            DispatchQueue.global().async(execute: workItem!)
             
-            videoWriterInput.markAsFinished()
-            
-            assetWriter.finishWriting {
-                if assetWriter.status == .completed{
-                    self.SaveAsset()
-                }else if assetWriter.status == .failed {
-                    print("An error occurred: \(assetWriter.error?.localizedDescription ?? "Unknown error")")
-                }
-            }
-
         }catch{
             print("Error with \(error.localizedDescription)")
         }
         
-
         
-
+        
+        
+        
     }
     
+    func cancellWriting(){
+        workItem?.cancel()
+    }
     
     func SaveAsset(){
-        //Checking and Taking permission
-         self.checkPermission()
+            //Checking and Taking permission
+        self.checkPermission()
         
         let defaultUrl = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString).appendingPathExtension("mov")
         PHPhotoLibrary.shared().performChanges({
@@ -364,26 +389,26 @@ class Export {
     
     func checkPermission(){
         let photoAuthorizationStatus = PHPhotoLibrary.authorizationStatus()
-            switch photoAuthorizationStatus {
-            case .authorized:
-                print("Access is granted by user")
-            case .notDetermined:
-                PHPhotoLibrary.requestAuthorization({
-                    (newStatus) in
-                    print("status is \(newStatus)")
-                    if newStatus == PHAuthorizationStatus.authorized {
-                        print("success")
-                    }
-                })
-                print("It is not determined until now")
-            case .restricted:
-                print("User do not have access to photo album.")
-            case .denied:
-                print("User has denied the permission.")
-            @unknown default:
-                print("Unknown status")
-            }
-
+        switch photoAuthorizationStatus {
+        case .authorized:
+            print("Access is granted by user")
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization({
+                (newStatus) in
+                print("status is \(newStatus)")
+                if newStatus == PHAuthorizationStatus.authorized {
+                    print("success")
+                }
+            })
+            print("It is not determined until now")
+        case .restricted:
+            print("User do not have access to photo album.")
+        case .denied:
+            print("User has denied the permission.")
+        @unknown default:
+            print("Unknown status")
+        }
+        
     }
     
     func frameSize() -> CGSize {
@@ -406,4 +431,4 @@ class Export {
         print("Resolution: \(Resolution) BitrateType: \(BitrateType)")
     }
     
-    }
+}

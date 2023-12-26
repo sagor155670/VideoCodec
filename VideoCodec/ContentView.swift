@@ -10,11 +10,6 @@ import AVFoundation
 import Photos
 import AVKit
 
-class countSample{
-//    func getSampleCount(sampleNo count: Int) -> Int{
-//        return count
-//    }
-}
 struct ContentView: View, ProgressCountProtocol {
     func getWriterPercentage(percentCount count: Int) {
         self.percent = count
@@ -30,7 +25,7 @@ struct ContentView: View, ProgressCountProtocol {
     @State var selectedMediaURL: URL? = nil
     @State var isShowingPicker:Bool = false
     @State var percent:Int = 0
-    
+    @State var exportObj:Export? = nil
 
     var body: some View {
         
@@ -78,6 +73,12 @@ struct ContentView: View, ProgressCountProtocol {
             }
             else if self.isloading{
                 VStack{
+                    Button{
+                        exportObj!.cancellWriting()
+                        self.isloading = false
+                    }label: {
+                        Text("Cancell")
+                    }
                     Text("sampleNo: \(self.percent)")
                     ProgressView()
                         .frame(width: 100,height: 100)
@@ -94,8 +95,10 @@ struct ContentView: View, ProgressCountProtocol {
 //                                extractFramesFromVideo(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")! )
 //                                ExportVideowithMixAudio(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")! )
 //                                InsertImageWithVideoTracksRealTime(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
-                                callExporter(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+//                                callExporter(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
 //                                ExportMixedVideo(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+                                ExportMixedVideo2(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+                                
                              
                                 let elapsedTime = CFAbsoluteTimeGetCurrent() - startTime
                                 print("elapsed time: \(elapsedTime)")
@@ -916,8 +919,8 @@ struct ContentView: View, ProgressCountProtocol {
         var videoTracks: [AVAssetTrack] = []
         var audioTracks: [AVAssetTrack] = []
         videoTracks.append(vTrack1!)
-        videoTracks.append(vTrack2!)
-        videoTracks.append(vTrack3!)
+//        videoTracks.append(vTrack2!)
+//        videoTracks.append(vTrack3!)
         audioTracks.append(aTrack1!)
         audioTracks.append(atrack2!)
         
@@ -931,11 +934,13 @@ struct ContentView: View, ProgressCountProtocol {
         
 //        self.sampleNo = export.sampleNo
         export.percentage = self
-        export.ExportAsset()
+        self.exportObj = export
+        exportObj!.ExportAsset()
         
-        self.isloading = false
-        self.outputVideoPlayer = AVPlayer(url: videoUrl)
-        return
+        
+//        self.isloading = false
+//        self.outputVideoPlayer = AVPlayer(url: videoUrl)
+//        return
         
 
     }
@@ -944,7 +949,7 @@ struct ContentView: View, ProgressCountProtocol {
         
         let asset = AVAsset(url: videoUrl)
         let videoAsset1 = AVAsset(url: videoUrl)
-        let videoAsset2 = AVAsset(url:  Bundle.main.url(forResource: "test2", withExtension: "MOV")!)
+        let videoAsset2 = AVAsset(url:  Bundle.main.url(forResource: "video2", withExtension: "MOV")!)
         let frameRate:Float = getFrameRate(asset: asset) ?? 30
         print("Framerate: \(frameRate)")
 //        let duration = CMTimeGetSeconds(asset.duration)
@@ -1001,27 +1006,12 @@ struct ContentView: View, ProgressCountProtocol {
             // Here we can set the transform to display videos side by side
             let videoSize = track1.naturalSize
 
-            let screenWidth = UIScreen.main.bounds.width
-            let screenHeight = UIScreen.main.bounds.height
-            let screenAspectRatio = screenWidth / screenHeight
-
-            // Calculate the aspect ratio of a single video track
-            let videoAspectRatio = videoSize.width / videoSize.height
-
-            // Calculate the scaling factor to fit both videos side by side
-            let scale: CGFloat
-            if screenAspectRatio > 2 * videoAspectRatio {
-                // If the screen is wider than twice the video, fit the videos horizontally
-                scale = screenWidth / (2 * videoSize.width)
-            } else {
-                // If the screen is taller or not wide enough, fit the videos vertically
-                scale = screenHeight / videoSize.height
-            }
+ 
 
             // Apply the scaling to both video tracks to fit them on the screen
-            let scaledTransform = CGAffineTransform(scaleX: 0.5, y: 0.5)
+            let scaledTransform = CGAffineTransform(scaleX: 0.5, y: 1)
             let moveLeft = CGAffineTransform(translationX: 0, y: 0)
-            let moveRight = CGAffineTransform(translationX: videoSize.width * scale, y: 0)
+            let moveRight = CGAffineTransform(translationX: videoSize.width * 0.5 , y: 0)
 
             layerInstruction1.setTransform(scaledTransform.concatenating(moveLeft), at: .zero)
             layerInstruction2.setTransform(scaledTransform.concatenating(moveRight), at: .zero)
@@ -1171,6 +1161,73 @@ struct ContentView: View, ProgressCountProtocol {
                 }
                 isloading = false
             }
+            
+        } catch {
+            print("Error with \(error.localizedDescription)")
+        }
+    }
+    
+    func ExportMixedVideo2(videoUrl: URL ) {
+        
+        let asset = AVAsset(url: videoUrl)
+        let videoAsset1 = AVAsset(url: videoUrl)
+        let videoAsset2 = AVAsset(url:  Bundle.main.url(forResource: "video2", withExtension: "MOV")!)
+        let frameRate:Float = getFrameRate(asset: asset) ?? 30
+        print("Framerate: \(frameRate)")
+//        let duration = CMTimeGetSeconds(asset.duration)
+//        print("Video duration: \(duration)")
+//        print("audio duration: \(audioAsset.duration)")
+        
+        let composition = AVMutableComposition()
+        
+        guard let track1 = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+              let track2 = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
+//            ,let track3 = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+        else {
+            return
+        }
+
+            
+        
+        do{
+                // Create an AVAssetReader instance
+            let assetReader = try AVAssetReader(asset: asset)
+            
+                // Get video track
+            let videoTrack = asset.tracks(withMediaType: .video).first!
+
+    
+            guard let vTrack1 = videoAsset1.tracks(withMediaType: .video).first else{
+                self.isloading = false
+                return
+            }
+            guard let vTrack2 = videoAsset2.tracks(withMediaType: .video).first else{
+                self.isloading = false
+                return
+            }
+        
+
+            try track1.insertTimeRange(CMTimeRange(start: .zero, duration: vTrack1.timeRange.duration) , of: vTrack1, at: .zero)
+            try track2.insertTimeRange(CMTimeRange(start: .zero , duration: vTrack2.timeRange.duration), of: vTrack2, at: .zero )
+
+            
+            composition.removeTimeRange(CMTimeRange(start: asset.duration, end: composition.duration))
+            
+//            let instruction = CustomOverlayInstruction(timeRange: CMTimeRange(start: .zero, duration: videoAsset2.duration), rotateSceondAsset: false)
+
+            let mainComposition = AVMutableVideoComposition()
+            mainComposition.customVideoCompositorClass = CustomCompositor.self
+//            mainComposition.instructions = [instruction]
+            mainComposition.frameDuration = CMTimeMake(value: 1, timescale: 30)
+            mainComposition.renderSize = CGSize(width: composition.naturalSize.width, height: composition.naturalSize.height)
+            
+            let playerItem = AVPlayerItem(asset: composition)
+            playerItem.videoComposition = mainComposition
+          
+            self.isloading = false
+            self.outputVideoPlayer = AVPlayer(playerItem: playerItem)
+            return
+            
             
         } catch {
             print("Error with \(error.localizedDescription)")
