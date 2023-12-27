@@ -33,53 +33,63 @@ class CustomCompositor: NSObject, AVVideoCompositing {
     
     func startRequest(_ asyncVideoCompositionRequest: AVAsynchronousVideoCompositionRequest) {
         /* This is where you will process your frames, for each sequence of frame you
-                 will recieve a render context that supplies a new empty frame , and instructions
-                 that are assigned to the render context as well*/
+         will recieve a render context that supplies a new empty frame , and instructions
+         that are assigned to the render context as well*/
         let request = asyncVideoCompositionRequest
         var destinationFrame = request.renderContext.newPixelBuffer()
+        print(request.sourceTrackIDs.count)
         
         if request.sourceTrackIDs.count == 2{
             let firstFrame = request.sourceFrame(byTrackID: request.sourceTrackIDs[0].int32Value)
             let secondFrame = request.sourceFrame(byTrackID: request.sourceTrackIDs[1].int32Value)
-            
+
             let instruction =  request.videoCompositionInstruction
-            
+
             if let instr = instruction as? CustomOverlayInstruction, let rotate = instr.rotateSecondAsset{
                 CVPixelBufferLockBaseAddress(firstFrame!, .readOnly)
                 CVPixelBufferLockBaseAddress(secondFrame!, .readOnly)
                 CVPixelBufferLockBaseAddress(destinationFrame!, CVPixelBufferLockFlags(rawValue: 0))
-                
+
                 var firstImage = createSourceImage(from: firstFrame)
                 var secondImage = createSourceImage(from: secondFrame)
-                
+
                 var destWidth =  CVPixelBufferGetWidth(destinationFrame!)
                 var destheight = CVPixelBufferGetHeight(destinationFrame!)
-                
+                let time = request.compositionTime
+                print(time)
+//                if time == CMTime(seconds: 10, preferredTimescale: 30){
+                    usleep(2000)
+//                }
+
                 if rotate{
 //                    you can rotate the image however you see fit or need to. You can also attach additional instruction to help you.determine the necessary changes
                 }
-                
+
                 let frame = CGRect(x: 0, y: 0, width: destWidth, height: destheight)
-                var innerFrame = CGRect(x: 0, y: 0, width: (Double(destWidth) * 0.3), height: (Double(destheight) * 0.2))
-                
+//                This issue might be due to the coordinate system used by Core Animation, which has its origin at the bottom left corner, while the coordinate system used by Core Graphics (which you’re using to draw your image) has its origin at the top left corner. This discrepancy can cause your final image to appear upside down.
+                var innerFrame = CGRect(x: 0, y: 0, width: (Double(destWidth) * 0.5), height: (Double(destheight) * 0.5))
+
                 let backgroundLayer = CALayer()
                 backgroundLayer.frame = frame
                 backgroundLayer.contentsGravity = .resizeAspect
                 backgroundLayer.contents = firstImage
-                
+
                 let overlayLayer = CALayer()
                 overlayLayer.frame = innerFrame
                 overlayLayer.contentsGravity = .resizeAspect
                 overlayLayer.contents = secondImage
-                
+
                 let finalLayer =  CALayer()
                 finalLayer.frame = frame
                 finalLayer.backgroundColor = Color.clear.cgColor
                 finalLayer.addSublayer(backgroundLayer)
                 finalLayer.addSublayer(overlayLayer)
-                
+
                 //create image using the CALayer
-                let fullImage = imageWithLayer(layer: finalLayer)
+//                let fullImage = imageWithLayer(layer: finalLayer)
+                let scale = UIScreen.main.scale
+                let width = Int(finalLayer.bounds.width * scale)
+                let height = Int(finalLayer.bounds.height * scale)
                 
                 var gc : CGContext?
                 if let destination = destinationFrame, let image = firstImage?.colorSpace{
@@ -88,11 +98,15 @@ class CustomCompositor: NSObject, AVVideoCompositing {
                                     bitsPerComponent: 8,
                                     bytesPerRow: CVPixelBufferGetBytesPerRow(destination),
                                     space: image,
-                                    bitmapInfo: firstImage?.bitmapInfo.rawValue ?? 0)
+                                    bitmapInfo: secondImage?.bitmapInfo.rawValue ?? 0)
                 }
                 //draw in the image using CGContext
-                gc?.draw(fullImage, in: frame)
-                
+//                gc?.draw(fullImage, in: frame)
+//                finalLayer.transform = CATransform3DMakeRotation(.pi, 1.0, 0.0, 0.0)
+                finalLayer.isGeometryFlipped = true
+                finalLayer.render(in: gc!)
+                gc?.makeImage()
+
 //                make sure you flush the current CALayers , if you fail to,Swift will hold on to them and cause a memory leak
                 CATransaction.flush()
                 //unlock addresses after finishing
@@ -100,10 +114,14 @@ class CustomCompositor: NSObject, AVVideoCompositing {
                 CVPixelBufferUnlockBaseAddress(firstFrame!, .readOnly)
                 CVPixelBufferUnlockBaseAddress(secondFrame!, .readOnly)
                 
+
                 //end function with request.finish
                 request.finish(withComposedVideoFrame: destinationFrame!)
             }
         }
+//        if request.sourceTrackIDs.count == 2{
+//            request.finish(withComposedVideoFrame: request.sourceFrame(byTrackID: request.sourceTrackIDs[1].int32Value)!)
+//        }
         else{
             request.finish(withComposedVideoFrame: request.sourceFrame(byTrackID: request.sourceTrackIDs[0].int32Value)!)
         }

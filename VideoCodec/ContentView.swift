@@ -135,7 +135,7 @@ struct ContentView: View, ProgressCountProtocol {
                             .setFramerate(30)
                             .setBitrateType("Low")
                             .build()
-            let bitrate = export.calculateBitrate()
+            let bitrate = ExportUtils.calculateBitrate(frameRate: export.frameRate, resolution: export.Resolution, bitrateType: export.BitrateType)
             print(bitrate)
             export.DisplayConfiguration()
             
@@ -1213,11 +1213,15 @@ struct ContentView: View, ProgressCountProtocol {
             
             composition.removeTimeRange(CMTimeRange(start: asset.duration, end: composition.duration))
             
-//            let instruction = CustomOverlayInstruction(timeRange: CMTimeRange(start: .zero, duration: videoAsset2.duration), rotateSceondAsset: false)
+            let instruction = CustomOverlayInstruction(timeRange: CMTimeRange(start: .zero, duration: videoAsset2.duration), rotateSceondAsset: true, videoTracks: composition.tracks(withMediaType: .video))
+//            let instruction = AVMutableVideoCompositionInstruction()
+            instruction.timeRange = CMTimeRange(start: .zero, duration: composition.duration)
+//            let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: vTrack1)
+//            instruction.layerInstructions = [layerInstruction]
 
             let mainComposition = AVMutableVideoComposition()
             mainComposition.customVideoCompositorClass = CustomCompositor.self
-//            mainComposition.instructions = [instruction]
+            mainComposition.instructions = [instruction]
             mainComposition.frameDuration = CMTimeMake(value: 1, timescale: 30)
             mainComposition.renderSize = CGSize(width: composition.naturalSize.width, height: composition.naturalSize.height)
             
