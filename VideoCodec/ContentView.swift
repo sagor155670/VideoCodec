@@ -97,7 +97,7 @@ struct ContentView: View, ProgressCountProtocol {
 //                                InsertImageWithVideoTracksRealTime(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
 //                                callExporter(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
 //                                ExportMixedVideo(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
-                                ExportMixedVideo2(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
+                                ExportMixedVideoWithMixedAudio(videoUrl: selectedMediaURL ?? Bundle.main.url(forResource: "test", withExtension: "MOV")!)
                                 
                              
                                 let elapsedTime = CFAbsoluteTimeGetCurrent() - startTime
@@ -1167,7 +1167,7 @@ struct ContentView: View, ProgressCountProtocol {
         }
     }
     
-    func ExportMixedVideo2(videoUrl: URL ) {
+    func ExportMixedVideoWithMixedAudio(videoUrl: URL ) {
         
         let asset = AVAsset(url: videoUrl)
         let videoAsset1 = AVAsset(url: videoUrl)
