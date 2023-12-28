@@ -21,21 +21,11 @@ class CustomOverlayInstruction: NSObject, AVVideoCompositionInstructionProtocol{
     var passthroughTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
     
     var rotateSecondAsset: Bool?
-    var videoTracks: [AVAssetTrack]
+
     
-    init(timeRange: CMTimeRange, rotateSceondAsset: Bool, videoTracks: [AVAssetTrack]) {
+    init(timeRange: CMTimeRange, rotateSceondAsset: Bool) {
         self.timeRange = timeRange
         self.rotateSecondAsset = rotateSceondAsset
-        self.videoTracks = videoTracks
     }
     
-    func makeOpacityInstructions() -> [AVMutableVideoCompositionLayerInstruction] {
-        var opacityInstructions: [AVMutableVideoCompositionLayerInstruction] = []
-        for track in videoTracks {
-            let instruction = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
-            instruction.setOpacity(0.0, at: track.timeRange.end)
-            opacityInstructions.append(instruction)
-        }
-        return opacityInstructions
-    }
 }

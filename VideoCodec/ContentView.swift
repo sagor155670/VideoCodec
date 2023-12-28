@@ -1172,6 +1172,10 @@ struct ContentView: View, ProgressCountProtocol {
         let asset = AVAsset(url: videoUrl)
         let videoAsset1 = AVAsset(url: videoUrl)
         let videoAsset2 = AVAsset(url:  Bundle.main.url(forResource: "video2", withExtension: "MOV")!)
+        let videoAsset3 = AVAsset(url:  Bundle.main.url(forResource: "video", withExtension: "mp4")!)
+        
+        let audioAsset1 = AVAsset(url: Bundle.main.url(forResource: "audio2", withExtension: "m4a")!)
+        let audioAsset2 = AVAsset(url: Bundle.main.url(forResource: "stereo2", withExtension: "m4a")!)
         let frameRate:Float = getFrameRate(asset: asset) ?? 30
         print("Framerate: \(frameRate)")
 //        let duration = CMTimeGetSeconds(asset.duration)
@@ -1182,7 +1186,10 @@ struct ContentView: View, ProgressCountProtocol {
         
         guard let track1 = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
               let track2 = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
-//            ,let track3 = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            ,let track3 = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
+            ,let track4 = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            ,let track5 = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            ,let track6 = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
         else {
             return
         }
@@ -1205,27 +1212,75 @@ struct ContentView: View, ProgressCountProtocol {
                 self.isloading = false
                 return
             }
-        
+            guard let vTrack3 = videoAsset3.tracks(withMediaType: .video).first else{
+                self.isloading = false
+                return
+            }
+            guard let aTrack1 = audioAsset1.tracks(withMediaType: .audio).first else{
+                self.isloading = false
+                return
+            }
+            guard let aTrack2 = audioAsset2.tracks(withMediaType: .audio).first else{
+                self.isloading = false
+                return
+            }
+            guard let aTrack3 = videoAsset3.tracks(withMediaType: .audio).first else{
+                self.isloading = false
+                return
+            }
 
             try track1.insertTimeRange(CMTimeRange(start: .zero, duration: vTrack1.timeRange.duration) , of: vTrack1, at: .zero)
-            try track2.insertTimeRange(CMTimeRange(start: .zero , duration: vTrack2.timeRange.duration), of: vTrack2, at: .zero )
+            try track2.insertTimeRange(CMTimeRange(start: .zero , duration: vTrack2.timeRange.duration), of: vTrack2, at: CMTime(seconds: 5, preferredTimescale: vTrack1.naturalTimeScale) /* CMTimeMultiplyByFloat64(vTrack1.timeRange.duration, multiplier: 0.5)*/)
+            try track3.insertTimeRange(CMTimeRange(start: .zero , duration: vTrack3.timeRange.duration), of: vTrack3, at:  CMTime(seconds: 10, preferredTimescale: vTrack1.naturalTimeScale) /*vTrack1.timeRange.duration*/ )
+
+            try track4.insertTimeRange(aTrack1.timeRange, of: aTrack1, at: .zero)
+//            try track5.insertTimeRange(aTrack1.timeRange, of: aTrack2, at: .zero)
+            
+            var maxVideoEndTime = CMTime.zero
+
+            // Iterate through the video tracks to find the maximum end time
+            for videoTrack in composition.tracks(withMediaType: .video) {
+                let trackEndTime = CMTimeAdd(videoTrack.timeRange.start, videoTrack.timeRange.duration)
+                
+                // Check if the current track's end time is greater than the current maximum
+                if trackEndTime > maxVideoEndTime {
+                    maxVideoEndTime = trackEndTime
+                }
+            }
 
             
-            composition.removeTimeRange(CMTimeRange(start: asset.duration, end: composition.duration))
+            let audioMixer = AVMutableAudioMix()
+            let mixParameters = AVMutableAudioMixInputParameters(track: track4)
+//            let mixParameters2 = AVMutableAudioMixInputParameters(track: aTrack2)
+//            let mixParameters3 = AVMutableAudioMixInputParameters(track: track3)
+        
+          
+
+            mixParameters.setVolumeRamp(fromStartVolume: 1, toEndVolume: 0, timeRange: CMTimeRange(start: .zero, duration: CMTime(seconds: 20, preferredTimescale: vTrack1.naturalTimeScale)))
+            mixParameters.setVolumeRamp(fromStartVolume: 0, toEndVolume: 1, timeRange: CMTimeRange(start: CMTime(seconds: 20, preferredTimescale: vTrack1.naturalTimeScale), duration: CMTime(seconds: 45, preferredTimescale: vTrack1.naturalTimeScale)))
+//            mixParameters2.setVolumeRamp(fromStartVolume:  0, toEndVolume: 1, timeRange: CMTimeRange(start: .zero, duration: composition.duration))
+//            mixParameters2.setVolumeRamp(fromStartVolume: 1, toEndVolume: 0.5 , timeRange: CMTimeRange(start: .zero, duration: composition.duration))no3
             
-            let instruction = CustomOverlayInstruction(timeRange: CMTimeRange(start: .zero, duration: videoAsset2.duration), rotateSceondAsset: true, videoTracks: composition.tracks(withMediaType: .video))
+            audioMixer.inputParameters = [mixParameters /*,mixParameters2,mixParameters3*/]
+            
+            
+            composition.removeTimeRange(CMTimeRange(start: maxVideoEndTime , end: composition.duration))
+            
+            let instruction = CustomOverlayInstruction(timeRange: CMTimeRange(start: .zero, duration: videoAsset2.duration), rotateSceondAsset: true)
 //            let instruction = AVMutableVideoCompositionInstruction()
             instruction.timeRange = CMTimeRange(start: .zero, duration: composition.duration)
 //            let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: vTrack1)
 //            instruction.layerInstructions = [layerInstruction]
 
             let mainComposition = AVMutableVideoComposition()
+            
             mainComposition.customVideoCompositorClass = CustomCompositor.self
             mainComposition.instructions = [instruction]
             mainComposition.frameDuration = CMTimeMake(value: 1, timescale: 30)
             mainComposition.renderSize = CGSize(width: composition.naturalSize.width, height: composition.naturalSize.height)
             
             let playerItem = AVPlayerItem(asset: composition)
+            playerItem.audioMix = audioMixer
             playerItem.videoComposition = mainComposition
           
             self.isloading = false
